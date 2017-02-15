@@ -1,0 +1,3 @@
+[submodule "pyqtgraph"]
+	path = pyqtgraph
+	url = git@github.com:Ylannl/pyqtgraph.git
