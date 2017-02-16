@@ -4,7 +4,7 @@ from PyQt5 import QtCore
 
 from pyvi.gloo import *
 from pyvi.util import *
-from pyvi.shaders import PointShaderProgram, LineShaderProgram
+from pyvi.shaders import PointShaderProgram, LineShaderProgram, TriangleShaderProgram
 
 
 class pvPainterNode(CtrlNode):
@@ -20,6 +20,8 @@ class pvPainterNode(CtrlNode):
             shader = PointShaderProgram()
         elif draw_type == 'lines':
             shader = LineShaderProgram()
+        elif draw_type == 'triangles':
+            shader = TriangleShaderProgram()
         buffer = Buffer()
         colormap = ColorMap()
         self.pvPainter = Painter(shader, draw_type, buffer, colormap)

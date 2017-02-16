@@ -314,3 +314,99 @@ class LineShaderProgram(ShaderProgram):
             #endif
         }}
         """.format(s_defines=self.s_defines)
+
+class TriangleShaderProgram(ShaderProgram):
+
+    def __init__(self, **kwargs):
+
+        self.options = {
+            'color_mode': 'fixed', # or texture
+            'color': [1.,1.,0.,1.],
+            'lightning': False
+        }
+        super(TriangleShaderProgram, self).__init__()
+        self.setOptions(**kwargs)
+        
+    def setOptions(self, **kwargs):
+        self.options.update(kwargs)
+
+        self.attribute_names = ['a_position']
+        self.uniform_names = ['u_model', 'u_view', 'u_projection']
+        
+        self.s_defines = ""
+        for key, value in self.options.items():
+            if key == 'color_mode':
+                self.s_defines += "#define {}\n".format(key+'_'+value)
+                if value == 'fixed':
+                    self.uniform_names += ['u_color']
+            elif key == 'lightning':
+                if value:
+                    self.s_defines += "#define {}\n".format(key)
+                # elif value == 'texture':
+                #     self.attribute_names += ['a_intensity']
+        if self.options['lightning']:
+            self.attribute_names += ['a_normal']
+
+    def initialise(self):
+        ShaderProgram.initialise(self)
+        if self.options['color_mode'] == 'fixed':
+            self.setUniformValue('u_color', np.array(self.options['color'], dtype=np.float32))
+
+    def rebuild(self, **kwargs):
+        self.delete()
+        self.setOptions(**kwargs)
+
+    @property
+    def vertexShaderSource(self):
+        return 'vertex', """
+        #version 330
+
+        {s_defines}
+
+        // Uniforms
+        // ------------------------------------
+        uniform mat4 u_model;
+        uniform mat4 u_view;
+        uniform mat4 u_projection;
+        uniform lowp vec4 u_color;
+
+        // Attributes
+        // ------------------------------------
+        in vec3  a_position;
+        #if defined(lightning)
+        in vec3  a_normal;
+        #endif
+
+        out vec4 v_color;
+
+        void main (void) {{
+        vec4 posEye = u_view * u_model * vec4(a_position, 1.0);    
+        gl_Position = u_projection * posEye;
+
+        #if defined(lightning)
+        vec4 n = u_view * u_model * vec4(a_normal, 0);
+        vec4 lighting_direction = vec4(1,1,1,0);
+        v_color = clamp(abs(dot(normalize(n), normalize(lighting_direction))), 0.3, 1) * u_color;
+        #else
+        v_color = u_color;
+        #endif
+        }}
+        """.format(s_defines=self.s_defines)
+
+    @property
+    def fragmentShaderSource(self):
+        return 'fragment', """
+        #version 330
+
+        {s_defines}
+
+        in vec4 v_color;
+        out vec4 color;
+
+        void main()
+        {{
+        color =  v_color;    
+        }}
+        """.format(s_defines=self.s_defines)
+
+        

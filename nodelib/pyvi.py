@@ -227,6 +227,102 @@ class pvLinePainterNode(pvPainterNode):
             'out': self.pvPainter,
             'bbox': bbox
         }
+
+
+class pvTrianglePainterNode(pvPainterNode):
+    nodeName = 'pvTrianglePainter'
+    uiTemplate = [
+        ('color_mode',  'combo', {'values':['fixed']}),
+        ('draw_mode',  'combo', {'values':['lines', 'triangles']}),
+        ('color',  'color', {'color':(128,128,0)}),
+        ('lightning',  'check', {'checked':False})#,
+        # ('gradient',  'gradient', {})
+    ]
+    
+    def __init__(self, name):
+        ## Initialize node with only a single input terminal
+        pvPainterNode.__init__(self, name, draw_type='triangles', terminals={
+        'a_position': {'io':'in', 'optional':False},
+        'a_normal': {'io':'in'},
+        # 'intensity': {'io':'in'},
+        'out': {'io':'out'},
+        'bbox': {'io':'out'}
+        })
+        self.ctrls['color_mode'].currentIndexChanged.connect(self.changeColorMode)
+        self.ctrls['draw_mode'].currentIndexChanged.connect(self.changeDrawMode)
+        self.ctrls['lightning'].stateChanged.connect(self.changeLightning)
+        # self.ctrls['gradient'].sigGradientChangeFinished.connect(self.changeGradient)
+
+    # def changeGradient(self, gradientItem):
+    #     if self.pvPainter.colormap.is_initialised:
+    #         self.pvPainter.colormap.setImage(gradientItem.getLookupTable(nPts=self.pvPainter.colormap.width, alpha=False))
+    #         self.update()
+
+    def changeColorMode(self, index):
+        if self.pvPainter.program.is_initialised:
+            if index == 0:
+                color_mode = 'fixed'
+            # else:
+            #     color_mode = 'texture'
+            self.pvPainter.program.rebuild(color_mode=color_mode)
+    
+    def changeDrawMode(self, index):
+        if self.pvPainter.program.is_initialised:
+            if index == 0:
+                draw_mode = 'lines'
+            else:
+                draw_mode = 'triangles'
+            self.pvPainter.draw_type=draw_mode
+
+    def changeLightning(self, state):
+        if self.pvPainter.program.is_initialised:
+            checked = state > 0
+            self.pvPainter.program.rebuild(lightning=checked)
+
+    def updateGL(self, struct_array, image_gradient, options):
+        self.pvPainter.program.setOptions(**options)
+        # self.pvPainter.colormap.setImage(image_gradient)
+        self.pvPainter.buffer.setData(struct_array)
+
+        if 'u_color' in self.pvPainter.program.uniforms: # should only be true if the program is initialised
+            self.pvPainter.program.setUniformValue('u_color', options['color'])
+
+    def process(self, a_position, a_normal, display=True):
+        if a_position is None:
+            raise Exception('Set Input')
+
+        m,n = a_position.shape
+        dtypes=[('a_position', np.float32, 3)]
+        if not a_normal is None:
+            dtypes.append(('a_normal', np.float32, 3))
+        # if not intensity is None:
+        #     dtypes.append(('a_intensity', np.float32, 1))
+
+        struct_array = np.empty( m, dtype=dtypes )
+        struct_array['a_position'] = a_position
+        if not a_normal is None:
+            struct_array['a_normal'][0::3] = a_normal
+            struct_array['a_normal'][1::3] = a_normal
+            struct_array['a_normal'][2::3] = a_normal
+        # if not intensity is None:
+        #     struct_array['a_intensity'] = intensity
+
+        options = {}
+        options['color'] = np.array(self.ctrls['color'].color(mode='float'), dtype=np.float32)
+        options['color_mode'] = self.ctrls['color_mode'].currentText()
+        # image_gradient = self.ctrls['gradient'].getLookupTable(nPts=self.pvPainter.colormap.width, alpha=False)
+        image_gradient=None
+        self.sigUpdateGL.emit(struct_array, image_gradient, options)
+
+        if self.pvPainter.is_initialised:
+            bbox=self.pvPainter.getBBox()
+        else:
+            bbox=None
+
+        return {
+            'out': self.pvPainter,
+            'bbox': bbox
+        }
             
     
 class pvLayerNode(CtrlNode):
