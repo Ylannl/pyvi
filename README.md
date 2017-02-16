@@ -8,7 +8,7 @@ brew install pyqt5
 ```
 Then check out this repository:
 ```
-git clone git@github.com:Ylannl/pyvi.git
+git clone https://github.com/Ylannl/pyvi.git
 ```
 and install pyvi and its dependencies using:
 ```
