@@ -233,9 +233,10 @@ class pvTrianglePainterNode(pvPainterNode):
     nodeName = 'pvTrianglePainter'
     uiTemplate = [
         ('color_mode',  'combo', {'values':['fixed']}),
-        ('draw_mode',  'combo', {'values':['lines', 'triangles']}),
+        # ('draw_mode',  'combo', {'values':['lines', 'triangles']}),
         ('color',  'color', {'color':(128,128,0)}),
-        ('lightning',  'check', {'checked':False})#,
+        ('lightning',  'check', {'checked':True}),
+        ('wireframe',  'check', {'checked':False})#,
         # ('gradient',  'gradient', {})
     ]
     
@@ -249,8 +250,9 @@ class pvTrianglePainterNode(pvPainterNode):
         'bbox': {'io':'out'}
         })
         self.ctrls['color_mode'].currentIndexChanged.connect(self.changeColorMode)
-        self.ctrls['draw_mode'].currentIndexChanged.connect(self.changeDrawMode)
+        # self.ctrls['draw_mode'].currentIndexChanged.connect(self.changeDrawMode)
         self.ctrls['lightning'].stateChanged.connect(self.changeLightning)
+        self.ctrls['wireframe'].stateChanged.connect(self.changeWireframe)
         # self.ctrls['gradient'].sigGradientChangeFinished.connect(self.changeGradient)
 
     # def changeGradient(self, gradientItem):
@@ -265,19 +267,16 @@ class pvTrianglePainterNode(pvPainterNode):
             # else:
             #     color_mode = 'texture'
             self.pvPainter.program.rebuild(color_mode=color_mode)
-    
-    def changeDrawMode(self, index):
-        if self.pvPainter.program.is_initialised:
-            if index == 0:
-                draw_mode = 'lines'
-            else:
-                draw_mode = 'triangles'
-            self.pvPainter.draw_type=draw_mode
 
     def changeLightning(self, state):
         if self.pvPainter.program.is_initialised:
             checked = state > 0
             self.pvPainter.program.rebuild(lightning=checked)
+    
+    def changeWireframe(self, state):
+        if self.pvPainter.program.is_initialised:
+            checked = state > 0
+            self.pvPainter.draw_polywire = checked
 
     def updateGL(self, struct_array, image_gradient, options):
         self.pvPainter.program.setOptions(**options)
@@ -310,6 +309,8 @@ class pvTrianglePainterNode(pvPainterNode):
         options = {}
         options['color'] = np.array(self.ctrls['color'].color(mode='float'), dtype=np.float32)
         options['color_mode'] = self.ctrls['color_mode'].currentText()
+        # options['lightning'] = self.ctrls['lightning'].checkState() > 0
+        # options['wireframe'] = self.ctrls['wireframe'].checkState() > 0
         # image_gradient = self.ctrls['gradient'].getLookupTable(nPts=self.pvPainter.colormap.width, alpha=False)
         image_gradient=None
         self.sigUpdateGL.emit(struct_array, image_gradient, options)

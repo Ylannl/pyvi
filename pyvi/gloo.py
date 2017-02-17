@@ -228,6 +228,7 @@ class Painter(object):
         self.buffer = buffer
         self.buffer_version = None
         self.draw_type = draw_type
+        self.draw_polywire = False
         self.colormap = colormap
         self.is_visible = is_visible
         self.is_initialised = False
@@ -310,11 +311,16 @@ class Painter(object):
                 self.program.setUniformValue('u_projection', view.mat_projection)
                 if 'u_model_scale' in self.program.uniform_names:
                     self.program.setUniformValue('u_model_scale', view.v_scale)
+
             # assert(gl.glGetError() == gl.GL_NO_ERROR)
             gl.glBindVertexArray(self.vertex_array)
             # assert(gl.glGetError() == gl.GL_NO_ERROR)
+            if self.draw_polywire:
+                gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_LINE)
             gl.glDrawArrays(DRAW_TYPES[self.draw_type], self.buffer.start, self.buffer.end)
             # assert(gl.glGetError() == gl.GL_NO_ERROR)
+            if self.draw_polywire:
+                gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_FILL)
             gl.glBindVertexArray(0)
             # assert(gl.glGetError() == gl.GL_NO_ERROR)
             self.program.release()

@@ -322,7 +322,7 @@ class TriangleShaderProgram(ShaderProgram):
         self.options = {
             'color_mode': 'fixed', # or texture
             'color': [1.,1.,0.,1.],
-            'lightning': False
+            'lightning': True
         }
         super(TriangleShaderProgram, self).__init__()
         self.setOptions(**kwargs)
