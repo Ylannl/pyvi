@@ -1,6 +1,6 @@
 from pyqtgraph.flowchart.library.common import CtrlNode
 from pyqtgraph.flowchart import Node
-from pyqtgraph import PlotDataItem, LinearRegionItem
+from pyqtgraph import PlotDataItem, LinearRegionItem, ScatterPlotItem, fn
 
 from PyQt5 import QtCore, QtGui
 
@@ -15,19 +15,24 @@ class ScatterPlotterNode(Node):
         Node.__init__(self, name, terminals={
             'x':{'io':'in'},
             'y':{'io':'in'},
+            'color':{'io':'in'},
             'plotItem':{'io':'out'}
         })
-        self.PlotDataItem = PlotDataItem(pen=None, symbol='o', symbolPen=None, symbolSize=4, symbolBrush=(0,220,220,160))
+        self.ScatterPlotItem = ScatterPlotItem(pen=None, symbol='o', size=4, brush=(255,255,255,160))
         self.sigUpdatePlot.connect(self.updatePlot)
 
-    def updatePlot(self, xy):
-        self.PlotDataItem.setData(*xy)
+    def updatePlot(self, xyc):
+        x,y,color = xyc
+        self.ScatterPlotItem.setData(x,y)
+        if not color is None:
+            brs = [fn.mkBrush(tuple(c)) for c in (color*255).astype(np.int32)]
+            self.ScatterPlotItem.setBrush(brs)
 
-    def process(self, x, y, display=True):
+    def process(self, x, y, color, display=True):
         if x is None or y is None:
             raise Exception('set proper inputs')
-        self.sigUpdatePlot.emit((x,y))
-        return {'plotItem': self.PlotDataItem}
+        self.sigUpdatePlot.emit((x,y,color))
+        return {'plotItem': self.ScatterPlotItem}
 
 class MultiplexerNode(CtrlNode):
     nodeName = 'Multiplexer'
