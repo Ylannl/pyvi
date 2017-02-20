@@ -27,13 +27,13 @@ class PointShaderProgram(ShaderProgram):
                 if value in ['oriented_disk', 'disk']:
                     self.uniform_names += ['u_model_scale']
             elif key == 'color_mode':
+                self.s_defines += "#define {}\n".format(key+'_'+value)
                 if value == 'fixed':
                     self.uniform_names += ['u_color']
                 elif value == 'texture':
                     self.attribute_names += ['a_intensity']
                 elif value == 'color':
                     self.attribute_names += ['a_color']
-                self.s_defines += "#define {}\n".format(key+'_'+value)
             elif key == 'lightning':
                 if value:
                     self.s_defines += "#define {}\n".format(key)
@@ -208,7 +208,7 @@ class LineShaderProgram(ShaderProgram):
     def __init__(self, **kwargs):
 
         self.options = {
-            'color_mode': 'fixed', # or texture
+            'color_mode': 'fixed', # or texture, color
             'alternate_vcolor': True,
             'color': [1.,1.,0.,1.]
         }
@@ -229,6 +229,8 @@ class LineShaderProgram(ShaderProgram):
                     self.uniform_names += ['u_color']
                 elif value == 'texture':
                     self.attribute_names += ['a_intensity']
+                elif value == 'color':
+                    self.attribute_names += ['a_color']
             elif key == 'alternate_vcolor':
                 if value:
                     self.s_defines += "#define {}\n".format(key)
@@ -263,26 +265,33 @@ class LineShaderProgram(ShaderProgram):
         // ------------------------------------
         in vec3 a_position;
 
-        #if defined(color_mode_fixed)
+        #if defined(color_mode_fixed) | defined(color_mode_color)
         out vec4 vcolor;
         #endif
         #if defined(color_mode_texture)
         in float a_intensity;
         out float v_intensity;
+        #elif defined(color_mode_color)
+        in lowp vec4 a_color;
         #endif
 
         void main (void) {{
-            #if defined(color_mode_fixed)
-            vcolor = u_color;
-            #if defined(alternate_vcolor)
-            if (gl_VertexID%2==0) {{
-                vcolor = vec4(1,1,1, 1);
-            }}
-            #endif
-            #endif
-
             #if defined(color_mode_texture)
-            v_intensity = a_intensity;
+                v_intensity = a_intensity;
+
+            #else
+                #if defined(color_mode_fixed)
+                    vcolor = u_color;
+
+                #elif defined(color_mode_color)
+                    vcolor = a_color;
+                #endif
+
+                #if defined(alternate_vcolor)
+                    if (gl_VertexID%2==0) {{
+                        vcolor = vec4(1,1,1, 1);
+                    }}
+                #endif
             #endif
             
             gl_Position = u_projection * u_view * u_model * vec4(a_position, 1.0);    
@@ -296,7 +305,7 @@ class LineShaderProgram(ShaderProgram):
 
         {s_defines}
 
-        #if defined(color_mode_fixed)
+        #if defined(color_mode_fixed) | defined(color_mode_color)
         in vec4 vcolor;
         #elif defined(color_mode_texture)
         uniform sampler1D u_colormap;
@@ -306,7 +315,7 @@ class LineShaderProgram(ShaderProgram):
 
         void main()
         {{
-            #if defined(color_mode_fixed)
+            #if defined(color_mode_fixed) | defined(color_mode_color)
             color =  vcolor;
             #endif
             #if defined(color_mode_texture)

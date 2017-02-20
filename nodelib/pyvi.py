@@ -148,7 +148,7 @@ class pvPointPainterNode(pvPainterNode):
 class pvLinePainterNode(pvPainterNode):
     nodeName = 'pvLinePainter'
     uiTemplate = [
-        ('color_mode',  'combo', {'values':['fixed', 'texture']}),
+        ('color_mode',  'combo', {'values':['fixed', 'texture', 'color']}),
         ('alternate_vcolor',  'check', {'checked':True}),
         ('color',  'color', {'color':(128,128,0)}),
         ('gradient',  'gradient', {})
@@ -160,6 +160,7 @@ class pvLinePainterNode(pvPainterNode):
         'start': {'io':'in', 'optional':False},
         'end': {'io':'in'},
         'intensity': {'io':'in'},
+        'color': {'io':'in'},
         'out': {'io':'out'},
         'bbox': {'io':'out'}
         })
@@ -176,8 +177,11 @@ class pvLinePainterNode(pvPainterNode):
         if self.pvPainter.program.is_initialised:
             if index == 0:
                 color_mode = 'fixed'
-            else:
+            elif index == 1:
                 color_mode = 'texture'
+            elif index == 2:
+                color_mode = 'color'
+            print(color_mode)
             self.pvPainter.program.rebuild(color_mode=color_mode)
 
     def changeAlternateVColor(self, state):
@@ -193,7 +197,7 @@ class pvLinePainterNode(pvPainterNode):
         if 'u_color' in self.pvPainter.program.uniforms: # should only be true if the program is initialised
             self.pvPainter.program.setUniformValue('u_color', options['color'])
 
-    def process(self, start, end, intensity, display=True):
+    def process(self, start, end, intensity, color, display=True):
         if start is None:
             raise Exception('Set Input')
 
@@ -202,6 +206,8 @@ class pvLinePainterNode(pvPainterNode):
         dtypes=[('a_position', np.float32, 3)]
         if not intensity is None:
             dtypes.append(('a_intensity', np.float32, 1))
+        if not color is None:
+            dtypes.append(('a_color', np.float32, 4))
 
         struct_array = np.empty( m, dtype=dtypes )
         struct_array['a_position'][0::2] = start
@@ -209,6 +215,9 @@ class pvLinePainterNode(pvPainterNode):
         if not intensity is None:
             struct_array['a_intensity'][0::2] = intensity
             struct_array['a_intensity'][1::2] = intensity
+        if not color is None:
+            struct_array['a_color'][0::2] = color
+            struct_array['a_color'][1::2] = color
 
         options = {}
         options['color'] = np.array(self.ctrls['color'].color(mode='float'), dtype=np.float32)

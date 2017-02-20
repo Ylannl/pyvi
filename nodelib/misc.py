@@ -2,7 +2,7 @@ from pyqtgraph.flowchart.library.common import CtrlNode
 from pyqtgraph.flowchart import Node
 from pyqtgraph import PlotDataItem, LinearRegionItem
 
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtGui
 
 import numpy as np
 
@@ -24,6 +24,8 @@ class ScatterPlotterNode(Node):
         self.PlotDataItem.setData(*xy)
 
     def process(self, x, y, display=True):
+        if x is None or y is None:
+            raise Exception('set proper inputs')
         self.sigUpdatePlot.emit((x,y))
         return {'plotItem': self.PlotDataItem}
 

@@ -188,7 +188,7 @@ class maSelectorNode(CtrlNode):
             self.ctrls['sheet_id'].blockSignals(False)
 
         if not sheet is None:
-            ma_idx = sheet['ma_idx']
+            ma_idx = np.array(sheet['ma_idx'])
         elif not new_cluster is None:
             ma_idx = np.concatenate(new_cluster.vs['ma_idx'])
         else:
