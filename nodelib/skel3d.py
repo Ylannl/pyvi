@@ -21,7 +21,8 @@ class maReaderNode(Node):
             'normals': {'io':'out'},
             'colors': {'io':'out'},
             'clusters': {'io':'out'},
-            'segment_graph': {'io':'out'}
+            'segment_graph': {'io':'out'},
+            'seg_link_flip': {'io':'out'}
         })
 
     def process(self, path, display=True):
@@ -43,6 +44,8 @@ class maReaderNode(Node):
             normals = datadict['normals']
         if 'colors' in datadict:
             colors = datadict['colors']
+        if 'seg_link_flip' in datadict:
+            seg_link_flip = datadict['seg_link_flip'].astype(np.int32)
 
         return {
             'datadict': datadict,
@@ -50,7 +53,8 @@ class maReaderNode(Node):
             'normals': normals,
             'colors': colors,
             'clusters': clusters,
-            'segment_graph': segment_graph
+            'segment_graph': segment_graph,
+            'seg_link_flip': seg_link_flip
         }
 
 class maWriterNode(Node):
@@ -115,11 +119,43 @@ class maMaskNode(Node):
 
         return out
 
+class maSegmentGraphEnricherNode(Node):
+    nodeName = 'maSegmentGraphEnricher'
+    # uiTemplate = [
+    #     ('delete_high_degree_vs',  'intSpin', {'min':0, 'max':100, 'value':0})
+    # ]
+
+    def __init__(self, name):
+        Node.__init__(self, name, terminals={
+            'gi': {'io':'in'},
+            'mah': {'io':'in'},
+            'go': {'io':'out'}
+        })
+
+    def process(self, gi, mah, display=True):
+        for v in gi.vs:
+            ma_idx = v['ma_idx']
+            r = mah.D['ma_radii'][ma_idx]
+            t = mah.D['ma_theta'][ma_idx]
+            r_mi, r_ma = np.nanmin(r), np.nanmax(r)
+            t_mi, t_ma = np.nanmin(t), np.nanmax(t)
+            v['r_min']=r_mi
+            v['r_max']=r_ma
+            v['t_min']=t_mi
+            v['t_max']=t_ma
+
+        return {
+            'go':gi,
+        }
+
 class maClusterFinderNode(CtrlNode):
     nodeName = 'maClusterFinder'
     uiTemplate = [
-        ('edge_cnt_threshold',  'doubleSpin', {'min':1, 'max':1000, 'value':20}),
-        ('delete_high_degree_vs',  'intSpin', {'min':0, 'max':100, 'value':0})
+        ('delete_high_degree_vs',  'intSpin', {'min':0, 'max':100, 'value':0}),
+        ('del_flip', 'check', {'checked':True}),
+        ('edge_cnt_threshold',  'intSpin', {'min':1, 'max':1000, 'value':20}),
+        ('r_thres',  'doubleSpin', {'min':0, 'max':500, 'value':9}),
+        ('theta_thres',  'doubleSpin', {'min':0, 'max':3.15, 'value':1})
     ]
 
     def __init__(self, name):
@@ -133,7 +169,10 @@ class maClusterFinderNode(CtrlNode):
     def process(self, ma_segment_graph, mah, display=True):
         ecount = self.ctrls['edge_cnt_threshold'].value()
         hdvs = self.ctrls['delete_high_degree_vs'].value()
-        get_clusters(mah, ecount, hdvs)
+        min_r = self.ctrls['r_thres'].value()
+        max_t = self.ctrls['theta_thres'].value()
+        del_flip = self.ctrls['del_flip'].checkState()>0
+        get_clusters(mah, ecount, hdvs, min_r=min_r, max_theta=max_t, del_flip=del_flip)
 
         return {
             'clusters':mah.D['ma_clusters'], 
@@ -255,11 +294,34 @@ class maClusterLineExpanderNode(Node):
             'classification': classification
         }
 
-class maClusterClassifierNode(Node):
-    nodeName = 'maClusterClassifier'
+class maVertexPairLineExtractorNode(Node):
+    nodeName='maVertexPairLineExtractor'
 
     def __init__(self, name):
+        Node.__init__(self, name, terminals={
+            'vpairs': {'io':'in'},
+            'gi': {'io':'in'},
+            'start': {'io':'out'},
+            'end': {'io':'out'},
+            'count': {'io':'out'}
+        })
+    def process(self, vpairs, gi, display=True):
+        l = len(vpairs)
+        start = np.zeros((l,3), dtype=np.float32)
+        end = np.zeros((l,3), dtype=np.float32)
+        i=0
+        for s,e in vpairs[:,:2]:
+            start[i] = gi.vs[s]['ma_coords_mean']
+            end[i] = gi.vs[e]['ma_coords_mean']
+            i+=1
+        return {'start':start, 'end':end, 'count':vpairs[:,2]}
 
+class maClusterClassifierNode(CtrlNode):
+    nodeName = 'maClusterClassifier'
+    uiTemplate = [
+        ('skip_first',  'intSpin', {'min':0, 'max':100, 'value':4}),
+    ]
+    def __init__(self, name):
         terminals={
             'clustersin': {'io':'in'},
             'mah': {'io':'in'},
@@ -268,18 +330,43 @@ class maClusterClassifierNode(Node):
         for classname in CLASSDICT.values():
             terminals[classname] = {'io':'out'}
         
-        Node.__init__(self, name, terminals=terminals)
+        CtrlNode.__init__(self, name, terminals=terminals)
 
     def process(self, clustersin, mah, display=True):
         result = {'clusters':clustersin}
         for classname in CLASSDICT.values():
             result[classname] = []
-
-        for cluster in clustersin:
+        skip_first = self.ctrls['skip_first'].value()
+        for cluster in clustersin[skip_first:]:
             cluster, classification = classify_cluster(cluster, mah)
             result[CLASSDICT[classification]].append(cluster)
 
         return result#, 'classdict':classdict}
+
+# class maSheetClassifierNode(Node):
+#     nodeName = 'maSheetClassifier'
+
+#     def __init__(self, name):
+#         terminals={
+#             'sheetsin': {'io':'in'},
+#             'mah': {'io':'in'},
+#             'sheetsout': {'io':'out'}
+#         }
+#         for classname in ['']:
+#             terminals[classname] = {'io':'out'}
+        
+#         Node.__init__(self, name, terminals=terminals)
+
+#     def process(self, clustersin, mah, display=True):
+#         result = {'clusters':clustersin}
+#         for classname in CLASSDICT.values():
+#             result[classname] = []
+
+#         for cluster in clustersin:
+#             cluster, classification = classify_cluster(cluster, mah)
+#             result[CLASSDICT[classification]].append(cluster)
+
+#         return result#, 'classdict':classdict}
 
 class maClusterLabeler(CtrlNode):
     nodeName = 'maClusterLabeler'
@@ -289,7 +376,6 @@ class maClusterLabeler(CtrlNode):
     ]
 
     def __init__(self, name):
-
         terminals={
             'clusteri': {'io':'in'},
             # 'mah': {'io':'in'},

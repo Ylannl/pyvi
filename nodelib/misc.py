@@ -18,20 +18,22 @@ class ScatterPlotterNode(Node):
             'color':{'io':'in'},
             'plotItem':{'io':'out'}
         })
-        self.ScatterPlotItem = ScatterPlotItem(pen=None, symbol='o', size=4, brush=(255,255,255,160))
+        self.ScatterPlotItem = ScatterPlotItem(pen=None, symbol='o', size=2, brush=(255,255,255,160))
         self.sigUpdatePlot.connect(self.updatePlot)
 
-    def updatePlot(self, xyc):
-        x,y,color = xyc
+    def updatePlot(self, xyb):
+        x,y,brs = xyb
         self.ScatterPlotItem.setData(x,y)
-        if not color is None:
-            brs = [fn.mkBrush(tuple(c)) for c in (color*255).astype(np.int32)]
+        if not brs is None:
             self.ScatterPlotItem.setBrush(brs)
 
     def process(self, x, y, color, display=True):
         if x is None or y is None:
             raise Exception('set proper inputs')
-        self.sigUpdatePlot.emit((x,y,color))
+        brs=None
+        if not color is None:
+            brs = [fn.mkBrush(tuple(c)) for c in (color*255).astype(np.int32)]
+        self.sigUpdatePlot.emit((x,y,brs))
         return {'plotItem': self.ScatterPlotItem}
 
 class MultiplexerNode(CtrlNode):

@@ -149,6 +149,7 @@ class pvLinePainterNode(pvPainterNode):
     nodeName = 'pvLinePainter'
     uiTemplate = [
         ('color_mode',  'combo', {'values':['fixed', 'texture', 'color']}),
+        ('wrap_mode',  'combo', {'values':['repeat', 'clamp_to_edge']}),
         ('alternate_vcolor',  'check', {'checked':True}),
         ('color',  'color', {'color':(128,128,0)}),
         ('gradient',  'gradient', {})
@@ -165,6 +166,7 @@ class pvLinePainterNode(pvPainterNode):
         'bbox': {'io':'out'}
         })
         self.ctrls['color_mode'].currentIndexChanged.connect(self.changeColorMode)
+        self.ctrls['wrap_mode'].currentIndexChanged.connect(self.changeWrapMode)
         self.ctrls['alternate_vcolor'].stateChanged.connect(self.changeAlternateVColor)
         self.ctrls['gradient'].sigGradientChangeFinished.connect(self.changeGradient)
 
@@ -181,8 +183,14 @@ class pvLinePainterNode(pvPainterNode):
                 color_mode = 'texture'
             elif index == 2:
                 color_mode = 'color'
-            print(color_mode)
             self.pvPainter.program.rebuild(color_mode=color_mode)
+
+    def changeWrapMode(self, index):
+        if self.pvPainter.program.is_initialised:
+            if index == 0:
+                self.pvPainter.colormap.setWrapMode('repeat')
+            elif index == 1:
+                self.pvPainter.colormap.setWrapMode('clamp_to_edge')
 
     def changeAlternateVColor(self, state):
         if self.pvPainter.program.is_initialised:

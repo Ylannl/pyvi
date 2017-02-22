@@ -129,6 +129,13 @@ class ColorMap(object):
 
         self.is_initialised = True
 
+    def setWrapMode(self, mode):
+        self.bind()
+        if mode == 'repeat':
+            gl.glTexParameteri(gl.GL_TEXTURE_1D, gl.GL_TEXTURE_WRAP_S, gl.GL_REPEAT)
+        elif mode == 'clamp_to_edge':
+            gl.glTexParameteri(gl.GL_TEXTURE_1D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
+
     # def setScheme(self, scheme):        
     #     if scheme == 'random':
     #         image = np.random.rand(self.width,3).astype(np.float32)
