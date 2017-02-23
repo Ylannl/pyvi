@@ -387,6 +387,7 @@ class pvWindowNode(CtrlNode):
     nodeName = 'pvWindow'
     
     sigLayerUpdated = QtCore.Signal(object)
+    sigPlotLayerUpdated = QtCore.Signal(object)
 
     uiTemplate = [
         ('near_clip',  'doubleSpin', {'min':0.1, 'max':500., 'value':0.1}),
@@ -397,12 +398,15 @@ class pvWindowNode(CtrlNode):
     def __init__(self, name):
         CtrlNode.__init__(self, name, terminals={
         'layers': {'io':'in', 'multi':True},
+        'plot_layers': {'io':'in', 'multi':True},
         'bbox': {'io':'in'}
         })
 
-    def setPyViWindow(self, window):
+    def setPyViWindow(self, window, plotwindow):
         self.pvWindow = window
+        self.pvPlotWindow = plotwindow
         self.sigLayerUpdated.connect(window.setLayer)
+        self.sigPlotLayerUpdated.connect(plotwindow.setLayer)
         self.update()
     
     def setWidgetPane(self, widget):
@@ -415,13 +419,17 @@ class pvWindowNode(CtrlNode):
                 if hasattr(layerNode,'pvLayer'):
                     self.pvWindow.unsetLayer(layerNode.pvLayer)
 
-    def process(self, layers, bbox):
+    def process(self, layers, plot_layers, bbox):
         if not hasattr(self, 'pvWindow'):
             raise Exception('No window is set')
 
         for layer in layers.values():
             if not layer is None:
                 self.sigLayerUpdated.emit(layer)
+        
+        for layer in plot_layers.values():
+            if not layer is None:
+                self.sigPlotLayerUpdated.emit(layer)
 
         self.pvWindow.p_nclip = self.ctrls['near_clip'].value()
         self.pvWindow.p_fclip = self.ctrls['far_clip'].value()

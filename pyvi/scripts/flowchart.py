@@ -60,6 +60,22 @@ class pyviViewerWindow(QtGui.QMainWindow):
 
         self.plotList = {'plot 1':self.plotWidget}
 
+        self.plot3DDockWidget = QDockWidget('Plot3D')
+        self.plot3DDockWidget.setFeatures(QDockWidget.DockWidgetFloatable|QDockWidget.DockWidgetMovable|QDockWidget.DockWidgetClosable)
+        self.pyviwin_plot = SimpleWindow()
+        pyviwin_plot_widget = QWidget.createWindowContainer(self.pyviwin_plot)
+        pyviwin_plot_widget.setMinimumSize(100,100)
+        pyviwin_plot_widget.resize(200,200)
+        self.plot3DDockWidget.setWidget(pyviwin_plot_widget)
+        self.plot3DDockWidget.show()
+        # self.plot3D.resize(100,100)
+
+        self.plotLayerDockWidget = QDockWidget('Plot Layers')
+        self.plotLayerDockWidget.setFeatures(QDockWidget.DockWidgetFloatable|QDockWidget.DockWidgetMovable)
+        self.plotLayerDockWidget.setWidget(self.pyviwin_plot.layerWidget)
+        self.pyviwin_plot.layerWidget.resize(200,500)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.plotLayerDockWidget)
+
         # self.dockWidgetDict = {}
 
         self.createActions()
@@ -173,7 +189,7 @@ class pyviViewerWindow(QtGui.QMainWindow):
         #     self.viewMenu.addAction(dock.toggleViewAction())
         #     self.dockWidgetDict[node] = dock
         if type(node) is pvWindowNode:
-            node.setPyViWindow(self.pyviwin)
+            node.setPyViWindow(self.pyviwin, self.pyviwin_plot)
         elif type(node) is PlotWidgetNode:
             node.setPlotList(self.plotList)
             node.setPlot(self.plotWidget)
