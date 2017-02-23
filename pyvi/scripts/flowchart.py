@@ -1,6 +1,6 @@
 from pyqtgraph.flowchart import Flowchart
 from pyqtgraph.flowchart.library.Display import PlotWidgetNode
-from pyqtgraph import PlotWidget, LinearRegionItem
+from pyqtgraph import PlotWidget
 from pyqtgraph import configfile
 
 # from pyqtgraph import dockarea as dockarea
@@ -11,12 +11,9 @@ from PyQt5.QtWidgets import QDockWidget, QAction
 from PyQt5.QtCore import Qt
 
 from pyvi.window import SimpleWindow
-from pyvi.util import BasicScene
 
 from nodelib import LIBRARY
 from nodelib.pyvi import pvWindowNode
-
-from skel3d.io import npy
 
 import click
 
