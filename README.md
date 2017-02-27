@@ -10,9 +10,11 @@ Then check out this repository:
 ```
 git clone https://github.com/Ylannl/pyvi.git
 ```
-and install pyvi and its dependencies using:
+initialise the git submodules and install pyvi and its dependencies using:
 ```
 cd pyvi
+git submodule init
+git submodule update
 pip3 install .
 ```
 (Python 3 is recommended)
