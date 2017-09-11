@@ -84,7 +84,8 @@ class RandomColorMapperNode(Node):
     def __init__(self, name):
         Node.__init__(self, name, terminals={
             'values': {'io':'in'},
-            'colors': {'io':'out'}
+            'colors': {'io':'out'},
+            'colormap': {'io':'out'}
         })
 
     def process(self, values):
@@ -96,6 +97,35 @@ class RandomColorMapperNode(Node):
         result = np.empty((len(values),4), dtype=np.float32)
         for i, v in enumerate(values):
             result[i] = colormap[v]
+
+        return {'colors': result, 'colormap':colormap}
+
+class ColorMapperNode(CtrlNode):
+    nodeName = 'ColorMapper'
+
+    uiTemplate = [
+        ('color_default',  'color', {'color':(20,20,20)})
+    ]
+
+    def __init__(self, name):
+        CtrlNode.__init__(self, name, terminals={
+            'values': {'io':'in'},
+            'colormap': {'io':'in'},
+            'colors': {'io':'out'}
+        })
+
+    def process(self, values, colormap):
+        # colormap = {}
+        # for v in np.unique(values):
+        #     colormap[v] = np.ones(4)
+        #     colormap[v][:-1] = np.random.random(3)
+
+        result = np.empty((len(values),4), dtype=np.float32)
+        for i, v in enumerate(values):
+            if v == -1:
+                result[i] = self.ctrls['color_default'].color(mode='float')
+            else:
+                result[i] = colormap[v]
 
         return {'colors': result}
 

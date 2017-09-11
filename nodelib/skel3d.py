@@ -37,7 +37,7 @@ class maReaderNode(Node):
         if 'ma_segment_graph' in datadict:
             segment_graph = datadict['ma_segment_graph']
 
-        coords = normals = colors = None
+        coords = normals = colors = seg_link_flip = None
         if 'coords' in datadict:
             coords = datadict['coords']
         if 'normals' in datadict:
@@ -103,19 +103,27 @@ class maMaskNode(Node):
         ## Initialize node with only a single input terminal
         terminals={
             'mah': {'io':'in'},
-            'ma_idx': {'io':'in', 'multi':True}
+            'ma_idx': {'io':'in', 'multi':True},
+            'pass_throughi': {'io':'in'},
+            'pass_through': {'io':'out'}
         }
         for key in MAHelper_arrays:
             terminals[key] = {'io':'out'}
         Node.__init__(self, name, allowAddOutput=False, terminals=terminals)
 
         
-    def process(self, mah, ma_idx=None, display=True):
+    def process(self, mah, ma_idx=None, pass_throughi=None, display=True):
         out = {}
 
         for key in MAHelper_arrays:
             if key in mah.D:
                 out[key] = mah.f(list(ma_idx.values()), key)
+
+        if pass_throughi is None:
+            out['pass_through'] = None
+        else:    
+            mah.D['pass_through'] = pass_throughi
+            out['pass_through'] = mah.f(list(ma_idx.values()), 'pass_through')
 
         return out
 
@@ -137,12 +145,15 @@ class maSegmentGraphEnricherNode(Node):
             ma_idx = v['ma_idx']
             r = mah.D['ma_radii'][ma_idx]
             t = mah.D['ma_theta'][ma_idx]
-            r_mi, r_ma = np.nanmin(r), np.nanmax(r)
+            r_mi, r_ma, r_avg = np.nanmin(r), np.nanmax(r), np.nanmean(r)
             t_mi, t_ma = np.nanmin(t), np.nanmax(t)
+            bz_avg = np.nanmean(mah.D['ma_bisec'][:,-1][ma_idx])
             v['r_min']=r_mi
             v['r_max']=r_ma
+            v['r_avg']=r_avg
             v['t_min']=t_mi
             v['t_max']=t_ma
+            v['bz_avg']=bz_avg
 
         return {
             'go':gi,
@@ -179,6 +190,37 @@ class maClusterFinderNode(CtrlNode):
             'ma_segment':mah.D['ma_segment']
         }
         
+# class maCluster2IDXNode(Node):
+#     nodeName = 'maCluster2IDX'
+#     # uiTemplate = [
+#     #     ('delete_high_degree_vs',  'intSpin', {'min':0, 'max':100, 'value':0})
+#     # ]
+
+#     def __init__(self, name):
+#         Node.__init__(self, name, terminals={
+#             'clusters': {'io':'in'},
+#             'mah': {'io':'in'},
+#             'idx': {'io':'out'}
+#         })
+
+#     def process(self, gi, mah, display=True):
+#         for v in gi.vs:
+#             ma_idx = v['ma_idx']
+#             r = mah.D['ma_radii'][ma_idx]
+#             t = mah.D['ma_theta'][ma_idx]
+#             r_mi, r_ma, r_avg = np.nanmin(r), np.nanmax(r), np.nanmean(r)
+#             t_mi, t_ma = np.nanmin(t), np.nanmax(t)
+#             bz_avg = np.nanmean(mah.D['ma_bisec'][:,-1][ma_idx])
+#             v['r_min']=r_mi
+#             v['r_max']=r_ma
+#             v['r_avg']=r_avg
+#             v['t_min']=t_mi
+#             v['t_max']=t_ma
+#             v['bz_avg']=bz_avg
+
+#         return {
+#             'go':gi,
+#         }
 
 class maSelectorNode(CtrlNode):
     nodeName = 'maSelector'
@@ -315,6 +357,50 @@ class maVertexPairLineExtractorNode(Node):
             end[i] = gi.vs[e]['ma_coords_mean']
             i+=1
         return {'start':start, 'end':end, 'count':vpairs[:,2]}
+
+class maClusterINEXClassifierNode(CtrlNode):
+    nodeName = 'maClusterINEXClassifier'
+    uiTemplate = [
+        ('color_int',  'color', {'color':(128,0,0)}),
+        ('color_default',  'color', {'color':(20,20,20)})
+    ]
+    def __init__(self, name):
+        terminals={
+            'clustersin': {'io':'in'},
+            'mah': {'io':'in'},
+            'int_clusters': {'io':'out'},
+            'ext_clusters': {'io':'out'},
+            'coords_color': {'io':'out'},
+            'coords_idx': {'io':'out'},
+            'clusters': {'io':'out'}
+        }
+        CtrlNode.__init__(self, name, terminals=terminals)
+
+    def process(self, clustersin, mah, display=True):
+        result = {'clusters':clustersin}
+
+        int_clusters = []
+        ext_clusters = []
+        coords_color = np.tile(self.ctrls['color_default'].color(mode='float'), (mah.m,1))
+        coords_idx = -1*np.ones(mah.m, dtype=np.int)
+
+        for i, cluster in enumerate(clustersin):
+            if np.mean(cluster.vs['bz_avg']) > 0:
+                int_clusters.append(cluster)
+                ma_idx = np.concatenate(cluster.vs['ma_idx'])
+                coords_color[mah.s_idx(ma_idx)] = np.array(self.ctrls['color_int'].color(mode='float'), dtype=np.float32)
+                coords_idx[mah.s_idx(ma_idx)] = i
+            else:
+                ext_clusters.append(cluster)
+
+
+        
+        result['int_clusters'] = int_clusters
+        result['ext_clusters'] = ext_clusters
+        result['coords_color'] = coords_color
+        result['coords_idx'] = coords_idx
+
+        return result#, 'classdict':classdict}
 
 class maClusterClassifierNode(CtrlNode):
     nodeName = 'maClusterClassifier'

@@ -173,7 +173,6 @@ class pvLinePainterNode(pvPainterNode):
     def changeGradient(self, gradientItem):
         if self.pvPainter.colormap.is_initialised:
             self.pvPainter.colormap.setImage(gradientItem.getLookupTable(nPts=self.pvPainter.colormap.width, alpha=False))
-            self.update()
 
     def changeColorMode(self, index):
         if self.pvPainter.program.is_initialised:

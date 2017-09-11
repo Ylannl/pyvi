@@ -347,4 +347,5 @@ class Layer(object):
 
     def unsetPainter(self, painter):
         if type(painter) is Painter:
-            self.painters.remove(painter)
+            if painter in self.painters:
+                self.painters.remove(painter)
