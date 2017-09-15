@@ -38,7 +38,7 @@ class pvBBoxNode(CtrlNode):
 class pvPointPainterNode(pvPainterNode):
     nodeName = 'pvPointPainter'
     uiTemplate = [
-        ('point_size',  'doubleSpin', {'min':1.0, 'max':200.0, 'value':3.0, 'step':0.2}),
+        ('point_size',  'doubleSpin', {'min':1.0, 'max':999.0, 'value':3.0, 'step':0.2}),
         ('lightning',  'check', {'checked':True}),
         ('draw_mode',  'combo', {'values':['simple', 'disk', 'oriented_disk']}),
         ('color_mode',  'combo', {'values':['fixed', 'texture', 'color']}),

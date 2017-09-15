@@ -22,7 +22,8 @@ class maReaderNode(Node):
             'colors': {'io':'out'},
             'clusters': {'io':'out'},
             'segment_graph': {'io':'out'},
-            'seg_link_flip': {'io':'out'}
+            'seg_link_flip': {'io':'out'},
+            'ma_segment_lidx': {'io':'out'},
         })
 
     def process(self, path, display=True):
@@ -46,6 +47,8 @@ class maReaderNode(Node):
             colors = datadict['colors']
         if 'seg_link_flip' in datadict:
             seg_link_flip = datadict['seg_link_flip'].astype(np.int32)
+        if 'ma_segment_lidx' in datadict:
+            ma_segment_lidx = datadict['ma_segment_lidx']
 
         return {
             'datadict': datadict,
@@ -54,7 +57,8 @@ class maReaderNode(Node):
             'colors': colors,
             'clusters': clusters,
             'segment_graph': segment_graph,
-            'seg_link_flip': seg_link_flip
+            'seg_link_flip': seg_link_flip,
+            'ma_segment_lidx': ma_segment_lidx
         }
 
 class maWriterNode(Node):
@@ -221,6 +225,61 @@ class maClusterFinderNode(CtrlNode):
 #         return {
 #             'go':gi,
 #         }
+
+class maSegmentLIDXEnricherNode(Node):
+    nodeName = 'maSegmentLIDXEnricher'
+    # uiTemplate = [
+    #     ('delete_high_degree_vs',  'intSpin', {'min':0, 'max':100, 'value':0})
+    # ]
+
+    def __init__(self, name):
+        Node.__init__(self, name, terminals={
+            'mah': {'io':'in'},
+            'bz_avg': {'io':'out'}
+        })
+
+    def process(self, mah, display=True):
+        result = np.empty(len(mah.D['ma_segment_lidx']))
+        for i,ma_idx in enumerate(mah.D['ma_segment_lidx']):
+            # r = mah.D['ma_radii'][ma_idx]
+            # t = mah.D['ma_theta'][ma_idx]
+            # r_mi, r_ma, r_avg = np.nanmin(r), np.nanmax(r), np.nanmean(r)
+            # t_mi, t_ma = np.nanmin(t), np.nanmax(t)
+            result[i] = np.nanmean(mah.D['ma_bisec'][:,-1][ma_idx])
+            # r_mi
+            # r_ma
+            # r_avg
+            # t_mi
+            # t_ma
+            # bz_avg
+
+        return {
+            'bz_avg':result,
+        }
+
+
+class maSegmentFiltererNode(CtrlNode):
+    nodeName = 'maSegmentFilterer'
+    uiTemplate = [
+        ('max_r',  'doubleSpin', {'min':0, 'max':9999, 'value':9}),
+        ('minavg_theta',  'doubleSpin', {'min':0, 'max':np.pi, 'value':np.pi/5})
+    ]
+
+    def __init__(self, name):
+        CtrlNode.__init__(self, name, terminals={
+            'mah': {'io':'in'},
+            'bz_avg': {'io':'in'},
+            'ma_idx': {'io':'out'}
+        })
+
+    def process(self, mah, bz_avg, display=True):
+
+        ma_idx = np.zeros(mah.m*2, dtype=np.bool)
+        for idx, b in zip(mah.D['ma_segment_lidx'], bz_avg):
+            if b > 0.01: 
+                ma_idx[idx] = 1
+
+        return {'ma_idx':(ma_idx,'ma')}
 
 class maSelectorNode(CtrlNode):
     nodeName = 'maSelector'
