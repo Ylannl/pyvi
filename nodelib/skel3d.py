@@ -38,7 +38,7 @@ class maReaderNode(Node):
         if 'ma_segment_graph' in datadict:
             segment_graph = datadict['ma_segment_graph']
 
-        coords = normals = colors = seg_link_flip = None
+        coords = normals = colors = seg_link_flip = ma_segment_lidx = None
         if 'coords' in datadict:
             coords = datadict['coords']
         if 'normals' in datadict:
@@ -235,51 +235,73 @@ class maSegmentLIDXEnricherNode(Node):
     def __init__(self, name):
         Node.__init__(self, name, terminals={
             'mah': {'io':'in'},
-            'bz_avg': {'io':'out'}
+            'seg_id_range': {'io':'out'},
+            'stats': {'io':'out'}
         })
 
     def process(self, mah, display=True):
-        result = np.empty(len(mah.D['ma_segment_lidx']))
-        for i,ma_idx in enumerate(mah.D['ma_segment_lidx']):
-            # r = mah.D['ma_radii'][ma_idx]
-            # t = mah.D['ma_theta'][ma_idx]
-            # r_mi, r_ma, r_avg = np.nanmin(r), np.nanmax(r), np.nanmean(r)
+        stats = np.empty(len(mah.D['ma_segment_lidx'].values()), dtype=[('r_ma','f4'), ('t_avg','f4'), ('bz_avg','f4')])
+        for i,ma_idx in enumerate(mah.D['ma_segment_lidx'].values()):
+            r = mah.D['ma_radii'][ma_idx]
+            t = mah.D['ma_theta'][ma_idx]
+            r_mi, r_ma = np.nanmin(r), np.nanmax(r)
             # t_mi, t_ma = np.nanmin(t), np.nanmax(t)
-            result[i] = np.nanmean(mah.D['ma_bisec'][:,-1][ma_idx])
-            # r_mi
-            # r_ma
-            # r_avg
-            # t_mi
-            # t_ma
-            # bz_avg
+            t_avg = np.nanmean(t)
+            bz_avg = np.nanmean(mah.D['ma_bisec'][:,-1][ma_idx])
+            # stats['r_mi'][i] = r_mi
+            stats['r_ma'][i] = r_ma
+            # stats['t_mi'][i] = t_mi
+            # stats['t_ma'][i] = t_ma
+            stats['t_avg'][i] = t_avg
+            stats['bz_avg'][i] = bz_avg
 
+        seg_id_range = (mah.D['ma_segment'].min(), mah.D['ma_segment'].max())
         return {
-            'bz_avg':result,
+            'stats':stats,
+            'seg_id_range':seg_id_range
         }
 
 
 class maSegmentFiltererNode(CtrlNode):
     nodeName = 'maSegmentFilterer'
     uiTemplate = [
-        ('max_r',  'doubleSpin', {'min':0, 'max':9999, 'value':9}),
-        ('minavg_theta',  'doubleSpin', {'min':0, 'max':np.pi, 'value':np.pi/5})
+        ('min_maxr',  'doubleSpin', {'min':0, 'max':9999, 'value':0}),
+        ('max_maxr',  'doubleSpin', {'min':0, 'max':9999, 'value':199}),
+        ('min_avgt',  'doubleSpin', {'min':0, 'max':np.pi, 'value':0}),
+        ('min_count',  'intSpin', {'min':0, 'max':9999, 'value':5}),
+        ('pos_bzavg', 'check', {'checked':True})
+        # ('max_t',  'doubleSpin', {'min':0, 'max':np.pi, 'value':np.pi})
+        # ('minavg_theta',  'doubleSpin', {'min':0, 'max':np.pi, 'value':np.pi/5})
     ]
 
     def __init__(self, name):
         CtrlNode.__init__(self, name, terminals={
             'mah': {'io':'in'},
-            'bz_avg': {'io':'in'},
+            'stats': {'io':'in'},
+            'coords_values': {'io':'out'},
             'ma_idx': {'io':'out'}
         })
 
-    def process(self, mah, bz_avg, display=True):
+    def process(self, mah, stats, display=True):
 
         ma_idx = np.zeros(mah.m*2, dtype=np.bool)
-        for idx, b in zip(mah.D['ma_segment_lidx'], bz_avg):
-            if b > 0.01: 
+        coords_values = -1*np.ones(mah.m, dtype=int)
+        for i,(seg_id, idx) in enumerate(mah.D['ma_segment_lidx'].items()):
+            f = True
+            # f &= self.ctrls['min_r'].value() < stats['r_mi'][i] 
+            f &= self.ctrls['min_maxr'].value() < stats['r_ma'][i] < self.ctrls['max_maxr'].value()
+            f &= self.ctrls['min_avgt'].value() < stats['t_avg'][i] 
+            f &= self.ctrls['min_count'].value() < len(idx)
+            # f &= self.ctrls['max_t'].value() > stats['t_ma'][i] 
+            if self.ctrls['pos_bzavg'].checkState()>0:
+                f &= stats['bz_avg'][i] > 0
+            if f:
                 ma_idx[idx] = 1
+                s_idx = mah.s_idx(idx)
+                coords_values[s_idx] = seg_id
+            # print(coords_values)
 
-        return {'ma_idx':(ma_idx,'ma')}
+        return {'ma_idx':(ma_idx,'ma'), 'coords_values':coords_values}
 
 class maSelectorNode(CtrlNode):
     nodeName = 'maSelector'
