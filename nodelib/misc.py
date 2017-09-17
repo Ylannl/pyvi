@@ -104,7 +104,7 @@ class ColorMapperNode(CtrlNode):
     nodeName = 'ColorMapper'
 
     uiTemplate = [
-        ('color_default',  'color', {'color':(20,20,20)})
+        ('nop',  'color', {'color':(20,20,20)})
     ]
 
     def __init__(self, name):
@@ -119,12 +119,14 @@ class ColorMapperNode(CtrlNode):
         # for v in np.unique(values):
         #     colormap[v] = np.ones(4)
         #     colormap[v][:-1] = np.random.random(3)
-        result = np.empty((len(values),4), dtype=np.float32)
-        for i, v in enumerate(values):
-            if v == -1:
-                result[i] = self.ctrls['color_default'].color(mode='float')
-            else:
-                result[i] = colormap[v]
+        # result = colormap.values[values]
+        # result = np.empty((len(values),4), dtype=np.float32)
+        result = colormap[values]
+        # for i, v in enumerate(values):
+        #     if v == -1:
+        #         result[i] = self.ctrls['color_default'].color(mode='float')
+        #     else:
+        #         result[i] = colormap[v]
 
         return {'colors': result}
 
@@ -142,14 +144,15 @@ class ColorMapMakerNode(CtrlNode):
         })
 
     def process(self, vrange):
-        colormap = {}
-        l = vrange[1]-vrange[0]
+        # colormap = {}
+        l = vrange[1]-vrange[0] + 1
         colors = np.ones((l,4))
         colors[:,:-1] = np.random.random((l,3))
+        colors[-1] = self.ctrls['color_default'].color(mode='float')
 
-        for i,v in enumerate(range(vrange[0], vrange[1]+1)):
-            colormap[v] = colors[i]
-        return {'colormap': colormap}
+        # for i,v in enumerate(range(vrange[0], vrange[1]+1)):
+            # colormap[v] = colors[i]
+        return {'colormap': colors}
 
 class arrayNormaliserNode(Node):
     nodeName = 'arrayNormaliser'

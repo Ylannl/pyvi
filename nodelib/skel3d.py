@@ -240,7 +240,7 @@ class maSegmentLIDXEnricherNode(Node):
         })
 
     def process(self, mah, display=True):
-        stats = np.empty(len(mah.D['ma_segment_lidx'].values()), dtype=[('r_ma','f4'), ('t_avg','f4'), ('bz_avg','f4')])
+        stats = np.empty(len(mah.D['ma_segment_lidx'].values()), dtype=[('r_ma','f4'), ('t_avg','f4'), ('bz_avg','f4'), ('count','i4')])
         for i,ma_idx in enumerate(mah.D['ma_segment_lidx'].values()):
             r = mah.D['ma_radii'][ma_idx]
             t = mah.D['ma_theta'][ma_idx]
@@ -254,6 +254,7 @@ class maSegmentLIDXEnricherNode(Node):
             # stats['t_ma'][i] = t_ma
             stats['t_avg'][i] = t_avg
             stats['bz_avg'][i] = bz_avg
+            stats['count'][i] = len(ma_idx)
 
         seg_id_range = (mah.D['ma_segment'].min(), mah.D['ma_segment'].max())
         return {
@@ -286,16 +287,27 @@ class maSegmentFiltererNode(CtrlNode):
 
         ma_idx = np.zeros(mah.m*2, dtype=np.bool)
         coords_values = -1*np.ones(mah.m, dtype=int)
+        
+        f = np.ones(len(mah.D['ma_segment_lidx']), dtype=bool)
+        # f &= self.ctrls['min_r'].value() < stats['r_mi'][i] 
+        f &= self.ctrls['min_maxr'].value() < stats['r_ma']
+        f &= stats['r_ma'] < self.ctrls['max_maxr'].value()
+        f &= self.ctrls['min_avgt'].value() < stats['t_avg'] 
+        f &= self.ctrls['min_count'].value() < stats['count']
+        # f &= self.ctrls['max_t'].value() > stats['t_ma'] 
+        if self.ctrls['pos_bzavg'].checkState()>0:
+            f &= stats['bz_avg'] > 0
+
         for i,(seg_id, idx) in enumerate(mah.D['ma_segment_lidx'].items()):
-            f = True
-            # f &= self.ctrls['min_r'].value() < stats['r_mi'][i] 
-            f &= self.ctrls['min_maxr'].value() < stats['r_ma'][i] < self.ctrls['max_maxr'].value()
-            f &= self.ctrls['min_avgt'].value() < stats['t_avg'][i] 
-            f &= self.ctrls['min_count'].value() < len(idx)
-            # f &= self.ctrls['max_t'].value() > stats['t_ma'][i] 
-            if self.ctrls['pos_bzavg'].checkState()>0:
-                f &= stats['bz_avg'][i] > 0
-            if f:
+            # f = True
+            # # f &= self.ctrls['min_r'].value() < stats['r_mi'][i] 
+            # f &= self.ctrls['min_maxr'].value() < stats['r_ma'][i] < self.ctrls['max_maxr'].value()
+            # f &= self.ctrls['min_avgt'].value() < stats['t_avg'][i] 
+            # f &= self.ctrls['min_count'].value() < len(idx)
+            # # f &= self.ctrls['max_t'].value() > stats['t_ma'][i] 
+            # if self.ctrls['pos_bzavg'].checkState()>0:
+            #     f &= stats['bz_avg'][i] > 0
+            if f[i]:
                 ma_idx[idx] = 1
                 s_idx = mah.s_idx(idx)
                 coords_values[s_idx] = seg_id
