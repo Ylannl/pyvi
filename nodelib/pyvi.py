@@ -389,6 +389,7 @@ class pvWindowNode(CtrlNode):
     sigPlotLayerUpdated = QtCore.Signal(object)
 
     uiTemplate = [
+        ('bg_color',  'color', {'color':(5,5,5)}),
         ('near_clip',  'doubleSpin', {'min':0.1, 'max':500., 'value':0.1}),
         ('far_clip',  'doubleSpin', {'min':1., 'max':500., 'value':100.}),
         ('fov',  'doubleSpin', {'min':1., 'max':100., 'value':60.})
@@ -430,9 +431,10 @@ class pvWindowNode(CtrlNode):
             if not layer is None:
                 self.sigPlotLayerUpdated.emit(layer)
 
-        self.pvWindow.p_nclip = self.ctrls['near_clip'].value()
-        self.pvWindow.p_fclip = self.ctrls['far_clip'].value()
-        self.pvWindow.p_fov = self.ctrls['fov'].value()
+        self.pvWindow.setClearColor(self.ctrls['bg_color'].color(mode='float'))
+        # self.pvWindow.p_nclip = self.ctrls['near_clip'].value()
+        # self.pvWindow.p_fclip = self.ctrls['far_clip'].value()
+        # self.pvWindow.p_fov = self.ctrls['fov'].value()
 
         self.pvWindow.setBBox(bbox)
         self.pvWindow.renderLater()

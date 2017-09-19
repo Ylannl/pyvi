@@ -132,6 +132,9 @@ class SimpleWindow(OpenGLWindow):
         # scene.window = self
         self.layers = []
 
+        # background color
+        self.clearcolor = (1,1,1,1)
+
         # model paramenters
         self.m_translation = np.zeros(3, dtype=np.float32)
 
@@ -155,7 +158,7 @@ class SimpleWindow(OpenGLWindow):
         self.layerWidget.headerItem().setHidden(True)
         self.layerWidget.setSelectionMode(QAbstractItemView.MultiSelection)
         self.layerWidget.itemClicked.connect(self.updateLayerVisibility)
-        
+
         # self.layerDockWidget.show()
 
     def updateLayerVisibility(self, item, col):
@@ -203,7 +206,7 @@ class SimpleWindow(OpenGLWindow):
 
     def initialise(self):
         self.crosshair_painter = crosshairPainter()
-        gl.glClearColor(0.05,0.05,0.05,1)
+        gl.glClearColor(*self.clearcolor)
         gl.glEnable(gl.GL_PROGRAM_POINT_SIZE)
         gl.glDepthMask(gl.GL_TRUE)
         gl.glEnable(gl.GL_DEPTH_TEST)
@@ -228,6 +231,9 @@ class SimpleWindow(OpenGLWindow):
             self.v_scale = .8 * 2*min((w/mi)/bbox.width[0], (h/mi)/bbox.width[1])
             self.v_translation = -bbox.center
 
+    def setClearColor(self, color):
+        self.clearcolor = color
+
     def render(self):
         # if self.scene.is_changed:
         #     self.center(self.scene.bbox)
@@ -235,6 +241,7 @@ class SimpleWindow(OpenGLWindow):
 
         gl.glViewport(0, 0, self.width(), self.height())
 
+        gl.glClearColor(*self.clearcolor)
         
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
